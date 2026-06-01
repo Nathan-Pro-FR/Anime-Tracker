@@ -1,34 +1,46 @@
-const API =
-"https://api.jikan.moe/v4/anime?q=";
+const API = "https://api.jikan.moe/v4/anime?q=";
 
 let animeList =
-JSON.parse(
-localStorage.getItem("animeList")
-) || [];
+JSON.parse(localStorage.getItem("animeList")) || [];
+
+let currentTab = "search";
+
+/* ---------------- TAB SYSTEM ---------------- */
+
+function switchTab(tab){
+
+document.querySelectorAll(".tab")
+.forEach(t => t.classList.remove("active"));
+
+document.getElementById(tab)
+.classList.add("active");
+
+currentTab = tab;
+
+if(tab === "library") renderList();
+if(tab === "stats") renderStats();
+}
+
+/* ---------------- SEARCH ---------------- */
 
 async function searchAnime(){
 
-const query =
-document.getElementById("searchInput")
-.value;
+const q = document.getElementById("searchInput").value;
 
-const res =
-await fetch(API + query);
+const res = await fetch(API + q);
+const data = await res.json();
 
-const data =
-await res.json();
-
-displayResults(data.data);
+renderSearch(data.data);
 }
 
-function displayResults(animes){
+function renderSearch(animes){
 
-const container =
-document.getElementById("results");
-
+const container = document.getElementById("results");
 container.innerHTML = "";
 
-animes.slice(0,10).forEach(anime=>{
+animes.forEach(anime => {
+
+const exists = animeList.some(a => a.id === anime.mal_id);
 
 container.innerHTML += `
 <div class="card">
@@ -39,13 +51,13 @@ container.innerHTML += `
 
 <h3>${anime.title}</h3>
 
-<p>
-${anime.synopsis?.slice(0,150) || ""}
-...
-</p>
+<p>${anime.synopsis?.slice(0,120) || ""}...</p>
 
-<button onclick='addAnime(${JSON.stringify(anime)})'>
-Ajouter
+<button 
+onclick='addAnime(${JSON.stringify(anime)})'
+${exists ? "disabled" : ""}
+>
+${exists ? "✅ Déjà ajouté" : "➕ Ajouter"}
 </button>
 
 </div>
@@ -54,40 +66,38 @@ Ajouter
 });
 }
 
+/* ---------------- ADD ---------------- */
+
 function addAnime(anime){
 
 animeList.push({
 id: anime.mal_id,
 title: anime.title,
-image:
-anime.images.jpg.large_image_url,
-description:
-anime.synopsis,
-status:"Pas commencé",
-rating:0
+image: anime.images.jpg.large_image_url,
+description: anime.synopsis,
+status: "planned",
+rating: 0
 });
 
 save();
 }
 
+/* ---------------- SAVE ---------------- */
+
 function save(){
-
-localStorage.setItem(
-"animeList",
-JSON.stringify(animeList)
-);
-
+localStorage.setItem("animeList", JSON.stringify(animeList));
 renderList();
+renderStats();
 }
+
+/* ---------------- LIST ---------------- */
 
 function renderList(){
 
-const container =
-document.getElementById("animeList");
+const container = document.getElementById("animeList");
+container.innerHTML = "";
 
-container.innerHTML="";
-
-animeList.forEach((anime,index)=>{
+animeList.forEach((anime, i) => {
 
 container.innerHTML += `
 <div class="card">
@@ -98,143 +108,123 @@ container.innerHTML += `
 
 <h3>${anime.title}</h3>
 
-<p>${anime.description?.slice(0,100)}</p>
+<span class="badge ${anime.status}">
+${anime.status}
+</span>
 
-<select
-onchange="
-animeList[${index}].status=this.value;
-save();
-">
-
-<option ${
-anime.status==="Pas commencé"
-?"selected":""
-}>
-Pas commencé
-</option>
-
-<option ${
-anime.status==="En cours"
-?"selected":""
-}>
-En cours
-</option>
-
-<option ${
-anime.status==="En pause"
-?"selected":""
-}>
-En pause
-</option>
-
-<option ${
-anime.status==="Terminé"
-?"selected":""
-}>
-Terminé
-</option>
-
-<option ${
-anime.status==="Abandonné"
-?"selected":""
-}>
-Abandonné
-</option>
-
+<select onchange="updateStatus(${i}, this.value)">
+<option value="planned">Pas commencé</option>
+<option value="watching">En cours</option>
+<option value="completed">Terminé</option>
+<option value="paused">Pause</option>
+<option value="dropped">Abandonné</option>
 </select>
 
-<input
-type="range"
-min="0"
-max="5"
-step="0.5"
-value="${anime.rating}"
-
-oninput="
-animeList[${index}].rating=this.value;
-save();
-">
-
-⭐ ${anime.rating}
+<div class="stars" onclick="rate(${i}, event)">
+${"★".repeat(Math.round(anime.rating))}${"☆".repeat(5 - Math.round(anime.rating))}
+</div>
 
 </div>
 </div>
 `;
 });
-
 }
+
+/* ---------------- STATUS ---------------- */
+
+function updateStatus(i, value){
+animeList[i].status = value;
+save();
+}
+
+/* ---------------- RATING ---------------- */
+
+function rate(i, e){
+
+const rect = e.target.getBoundingClientRect();
+const x = e.clientX - rect.left;
+const percent = x / rect.width;
+
+animeList[i].rating = Math.min(5, Math.max(0, percent * 5));
+
+save();
+}
+
+/* ---------------- STATS ---------------- */
+
+function renderStats(){
+
+document.getElementById("total").innerText = animeList.length;
+
+document.getElementById("watching").innerText =
+animeList.filter(a => a.status === "watching").length;
+
+document.getElementById("completed").innerText =
+animeList.filter(a => a.status === "completed").length;
+
+const avg =
+animeList.reduce((acc,a)=>acc + a.rating,0) /
+(animeList.length || 1);
+
+document.getElementById("avg").innerText =
+avg.toFixed(1);
+}
+
+/* ---------------- EXPORT JSON ---------------- */
 
 function exportJSON(){
 
-const blob =
-new Blob(
-[JSON.stringify(animeList,null,2)],
+const blob = new Blob(
+[JSON.stringify(animeList, null, 2)],
 {type:"application/json"}
 );
 
 download(blob,"anime.json");
 }
 
+/* ---------------- EXPORT CSV ---------------- */
+
 function exportCSV(){
 
-let csv =
-"title,status,rating\n";
+let csv = "title,status,rating\n";
 
 animeList.forEach(a=>{
-
-csv +=
-`${a.title},
-${a.status},
-${a.rating}\n`;
-
+csv += `${a.title},${a.status},${a.rating}\n`;
 });
 
-const blob =
-new Blob([csv],
-{type:"text/csv"});
-
+const blob = new Blob([csv], {type:"text/csv"});
 download(blob,"anime.csv");
 }
 
+/* ---------------- DOWNLOAD ---------------- */
+
 function download(blob,name){
 
-const a =
-document.createElement("a");
-
-a.href =
-URL.createObjectURL(blob);
-
+const a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
 a.download = name;
-
 a.click();
 }
 
-document
-.getElementById("importFile")
-.addEventListener(
-"change",
-function(e){
+/* ---------------- IMPORT ---------------- */
 
-const file =
-e.target.files[0];
+document.getElementById("importFile")
+.addEventListener("change", e => {
 
-const reader =
-new FileReader();
+const file = e.target.files[0];
+const reader = new FileReader();
 
-reader.onload=function(){
+reader.onload = () => {
 
 if(file.name.endsWith(".json")){
-
-animeList =
-JSON.parse(reader.result);
-
+animeList = JSON.parse(reader.result);
 save();
 }
-
 };
 
 reader.readAsText(file);
-
 });
 
+/* INIT */
 renderList();
+renderStats();
