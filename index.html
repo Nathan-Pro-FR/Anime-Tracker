@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-<title>Anime Tracker</title>
+<title>Anime Tracker V2</title>
 
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 
 <body>
@@ -16,40 +14,60 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
 <header>
 <h1>🎌 Anime Tracker</h1>
 
-<input
-type="text"
-id="searchInput"
-placeholder="Rechercher un anime..."
->
-
-<button onclick="searchAnime()">
-Rechercher
-</button>
+<input id="searchInput" placeholder="Rechercher un anime...">
+<button onclick="searchAnime()">🔍</button>
 </header>
 
-<div id="results"></div>
+<!-- NAV -->
+<nav class="tabs">
+<button onclick="switchTab('search')">🔍 Recherche</button>
+<button onclick="switchTab('library')">📚 Ma Liste</button>
+<button onclick="switchTab('stats')">📊 Stats</button>
+</nav>
 
-<h2>Ma Liste</h2>
+<!-- SEARCH -->
+<section id="search" class="tab active">
+<div id="results"></div>
+</section>
+
+<!-- LIBRARY -->
+<section id="library" class="tab">
+<div id="animeList"></div>
 
 <div class="actions">
+<button onclick="exportJSON()">Exporter JSON</button>
+<button onclick="exportCSV()">Exporter CSV</button>
 
-<button onclick="exportJSON()">
-Exporter JSON
-</button>
+<input type="file" id="importFile" accept=".json,.csv">
+</div>
+</section>
 
-<button onclick="exportCSV()">
-Exporter CSV
-</button>
+<!-- STATS -->
+<section id="stats" class="tab">
+<div class="dashboard">
 
-<input
-type="file"
-id="importFile"
-accept=".json,.csv"
->
-
+<div class="cardStat">
+<h2 id="total">0</h2>
+<p>Total</p>
 </div>
 
-<div id="animeList"></div>
+<div class="cardStat">
+<h2 id="watching">0</h2>
+<p>En cours</p>
+</div>
+
+<div class="cardStat">
+<h2 id="completed">0</h2>
+<p>Terminés</p>
+</div>
+
+<div class="cardStat">
+<h2 id="avg">0</h2>
+<p>Moyenne ⭐</p>
+</div>
+
+</div>
+</section>
 
 <script src="script.js"></script>
 </body>
